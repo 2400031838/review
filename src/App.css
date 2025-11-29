@@ -1,0 +1,19 @@
+/* RESET THE ROOT TO FULL SCREEN */
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Remove old Vite demo styles */
+.logo,
+.card,
+.read-the-docs {
+  all: unset;
+}
+/* Make all headings white */
+h1, h2, h3, h4, h5, h6 {
+  color: white !important;
+}
