@@ -1,23 +1,30 @@
-import React, { useState } from "react";
+// src/recipient/Feedback.jsx
+import React, { useEffect, useState } from "react";
+import { db } from "../firebase";
+import { addDoc, collection, onSnapshot } from "firebase/firestore";
 
 function Feedback() {
   const [message, setMessage] = useState("");
-  const [list, setList] = useState(
-    JSON.parse(localStorage.getItem("feedback")) || []
-  );
+  const [list, setList] = useState([]);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "feedback"), (snap) => {
+      setList(snap.docs.map((d) => d.data().message));
+    });
+
+    return () => unsub();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!message) {
+    if (!message.trim()) {
       alert("Enter feedback!");
       return;
     }
 
-    const updated = [...list, message];
-    setList(updated);
+    await addDoc(collection(db, "feedback"), { message });
 
-    localStorage.setItem("feedback", JSON.stringify(updated));
     setMessage("");
   };
 
@@ -42,20 +49,15 @@ function Feedback() {
 
       <h3 className="mt-4">Your Previous Feedback</h3>
 
-      {list.length === 0 ? (
-        <p>No feedback submitted.</p>
-      ) : (
-        <ul className="list-group mt-3">
-          {list.map((f, i) => (
-            <li key={i} className="list-group-item">
-              {f}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="list-group mt-3">
+        {list.map((f, i) => (
+          <li key={i} className="list-group-item">
+            {f}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 export default Feedback;
-

@@ -1,21 +1,52 @@
 import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
-function ProtectedRoute({ children, allowedRoles }) {
-  const user = JSON.parse(localStorage.getItem("loggedInUser"));
+import { db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
-  // No user → redirect to login
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
+export default function ProtectedRoute({ allowedRoles, children }) {
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
-  // Role not allowed → redirect to login
-  if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" />;
-  }
+  useEffect(() => {
+    const checkUser = async () => {
+      const loggedUser = JSON.parse(localStorage.getItem("loggedInUser"));
 
-  // Allowed → show the component
+      // ❌ Not logged in → redirect to login
+      if (!loggedUser || !loggedUser.id) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      // 🔥 Get user from Firestore
+      const userRef = doc(db, "users", loggedUser.id);
+      const snap = await getDoc(userRef);
+
+      if (snap.exists()) {
+        const userData = snap.data();
+
+        // Check role
+        if (allowedRoles.includes(userData.role)) {
+          setAuthorized(true);
+        } else {
+          setAuthorized(false);
+        }
+      } else {
+        setAuthorized(false);
+      }
+
+      setLoading(false);
+    };
+
+    checkUser();
+  }, [allowedRoles]);
+
+  if (loading) return <p className="text-center mt-5">Checking Access...</p>;
+
+  // ❌ If not allowed → redirect to login
+  if (!authorized) return <Navigate to="/login" replace />;
+
+  // ✔ Allowed → open component
   return children;
 }
-
-export default ProtectedRoute;
-

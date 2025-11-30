@@ -1,5 +1,15 @@
-
 import React, { useState, useEffect } from "react";
+
+// ⭐ Firestore Imports
+import { db } from "../firebase";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot
+} from "firebase/firestore";
 
 function ManageDrives() {
   const [form, setForm] = useState({
@@ -9,18 +19,27 @@ function ManageDrives() {
   });
 
   const [drives, setDrives] = useState([]);
-  const [editIndex, setEditIndex] = useState(null);
+  const [editId, setEditId] = useState(null);
 
+  // ⭐ REAL-TIME FIRESTORE LISTENER
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("drives")) || [];
-    setDrives(stored);
+    const unsub = onSnapshot(collection(db, "drives"), (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setDrives(list);
+    });
+
+    return () => unsub();
   }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // ⭐ ADD OR UPDATE DRIVE
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.name || !form.location || !form.status) {
@@ -28,30 +47,47 @@ function ManageDrives() {
       return;
     }
 
-    let updated = [...drives];
-
-    if (editIndex !== null) {
-      updated[editIndex] = form;
-      setEditIndex(null);
-    } else {
-      updated.push(form);
+    try {
+      if (editId) {
+        // UPDATE
+        await updateDoc(doc(db, "drives", editId), form);
+        alert("Drive updated successfully!");
+        setEditId(null);
+      } else {
+        // CREATE
+        await addDoc(collection(db, "drives"), {
+          ...form,
+          createdAt: new Date(),
+        });
+        alert("Drive added successfully!");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving drive!");
     }
-
-    setDrives(updated);
-    localStorage.setItem("drives", JSON.stringify(updated));
 
     setForm({ name: "", location: "", status: "" });
   };
 
-  const handleEdit = (index) => {
-    setForm(drives[index]);
-    setEditIndex(index);
+  // ⭐ EDIT DRIVE
+  const handleEdit = (drive) => {
+    setForm({
+      name: drive.name,
+      location: drive.location,
+      status: drive.status,
+    });
+    setEditId(drive.id);
   };
 
-  const handleDelete = (index) => {
-    const updated = drives.filter((_, i) => i !== index);
-    setDrives(updated);
-    localStorage.setItem("drives", JSON.stringify(updated));
+  // ⭐ DELETE DRIVE
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoc(doc(db, "drives", id));
+      alert("Drive deleted!");
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting drive!");
+    }
   };
 
   return (
@@ -97,12 +133,11 @@ function ManageDrives() {
           </div>
 
           <button className="btn btn-primary w-100">
-            {editIndex !== null ? "Update Drive" : "Add Drive"}
+            {editId ? "Update Drive" : "Add Drive"}
           </button>
         </form>
       </div>
 
-      {/* Display Drives */}
       <h3 className="mt-4">All Drives</h3>
 
       {drives.length === 0 ? (
@@ -119,22 +154,22 @@ function ManageDrives() {
           </thead>
 
           <tbody>
-            {drives.map((d, index) => (
-              <tr key={index}>
+            {drives.map((d) => (
+              <tr key={d.id}>
                 <td>{d.name}</td>
                 <td>{d.location}</td>
                 <td>{d.status}</td>
                 <td>
                   <button
                     className="btn btn-warning btn-sm me-2"
-                    onClick={() => handleEdit(index)}
+                    onClick={() => handleEdit(d)}
                   >
                     Edit
                   </button>
 
                   <button
                     className="btn btn-danger btn-sm"
-                    onClick={() => handleDelete(index)}
+                    onClick={() => handleDelete(d.id)}
                   >
                     Delete
                   </button>

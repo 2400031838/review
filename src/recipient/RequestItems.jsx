@@ -1,146 +1,177 @@
-import React, { useState, useEffect } from "react";
+// src/recipient/RequestItems.jsx
+import React, { useState } from "react";
+import { db } from "../firebase";
+import { addDoc, collection } from "firebase/firestore";
 
 function RequestItems() {
   const [form, setForm] = useState({
     item: "",
-    quantity: "",
+    quantity: "",   // ⭐ Now text type
     reason: "",
+    houseNo: "",
+    street: "",
+    pincode: "",
+    city: "",
+    state: "",
   });
 
-  const [requests, setRequests] = useState([]);
-  const [editIndex, setEditIndex] = useState(null);
-
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("requests")) || [];
-    setRequests(stored);
-  }, []);
-
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleSubmit = (e) => {
+  const fetchLocation = async (pin) => {
+    const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+    const data = await res.json();
+
+    if (data[0].Status !== "Success") return null;
+
+    const office = data[0].PostOffice[0];
+    return { city: office.District, state: office.State };
+  };
+
+  const handlePincode = async (e) => {
+    const pin = e.target.value;
+    setForm({ ...form, pincode: pin });
+
+    if (pin.length === 6) {
+      const loc = await fetchLocation(pin);
+      if (loc) {
+        setForm((prev) => ({
+          ...prev,
+          city: loc.city,
+          state: loc.state,
+        }));
+      } else {
+        alert("Invalid pincode!");
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.item || !form.quantity || !form.reason) {
-      alert("All fields are required!");
+    if (
+      !form.item ||
+      !form.quantity ||
+      !form.reason ||
+      !form.houseNo ||
+      !form.street ||
+      !form.pincode ||
+      !form.city ||
+      !form.state
+    ) {
+      alert("All fields including full address are required!");
       return;
     }
 
-    let updated = [...requests];
+    await addDoc(collection(db, "requests"), {
+      ...form,
+      status: "Pending",
+      createdAt: new Date(),
+    });
 
-    if (editIndex !== null) {
-      updated[editIndex] = form;
-      setEditIndex(null);
-    } else {
-      updated.push(form);
-    }
+    alert("Request submitted!");
 
-    setRequests(updated);
-    localStorage.setItem("requests", JSON.stringify(updated));
-
-    setForm({ item: "", quantity: "", reason: "" });
-  };
-
-  const handleEdit = (index) => {
-    setForm(requests[index]);
-    setEditIndex(index);
-  };
-
-  const handleDelete = (index) => {
-    const updated = requests.filter((_, i) => i !== index);
-    setRequests(updated);
-    localStorage.setItem("requests", JSON.stringify(updated));
+    setForm({
+      item: "",
+      quantity: "",
+      reason: "",
+      houseNo: "",
+      street: "",
+      pincode: "",
+      city: "",
+      state: "",
+    });
   };
 
   return (
     <div className="container mt-4">
       <h2>Request Items</h2>
 
-      <div className="card p-3 mt-3 shadow">
+      <div className="card p-3 shadow mt-3">
         <form onSubmit={handleSubmit}>
           <div className="mb-2">
-            <label>Item Name:</label>
+            <label>Item Needed</label>
             <input
-              type="text"
-              name="item"
               className="form-control"
+              name="item"
               value={form.item}
               onChange={handleChange}
             />
           </div>
 
           <div className="mb-2">
-            <label>Quantity:</label>
+            <label>Quantity (example: 5kg, 2 packets)</label>
             <input
-              type="number"
-              name="quantity"
               className="form-control"
+              name="quantity"
               value={form.quantity}
               onChange={handleChange}
+              placeholder="Ex: 5kg, 2 packets"
             />
           </div>
 
           <div className="mb-2">
-            <label>Reason:</label>
+            <label>Reason</label>
             <textarea
-              name="reason"
               className="form-control"
+              name="reason"
               value={form.reason}
               onChange={handleChange}
             ></textarea>
           </div>
 
-          <button className="btn btn-primary w-100 mt-2">
-            {editIndex !== null ? "Update Request" : "Submit Request"}
-          </button>
+          {/* ⭐ FULL ADDRESS */}
+          <h5 className="mt-3">Delivery Address</h5>
+
+          <div className="mb-2">
+            <label>House No</label>
+            <input
+              className="form-control"
+              name="houseNo"
+              value={form.houseNo}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-2">
+            <label>Street</label>
+            <input
+              className="form-control"
+              name="street"
+              value={form.street}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-2">
+            <label>Pincode</label>
+            <input
+              className="form-control"
+              name="pincode"
+              value={form.pincode}
+              onChange={handlePincode}
+            />
+          </div>
+
+          <div className="mb-2">
+            <label>City</label>
+            <input className="form-control" value={form.city} disabled />
+          </div>
+
+          <div className="mb-2">
+            <label>State</label>
+            <input className="form-control" value={form.state} disabled />
+          </div>
+
+          <button className="btn btn-primary w-100 mt-2">Submit Request</button>
         </form>
       </div>
-
-      <h3 className="mt-4">Your Requests</h3>
-
-      {requests.length === 0 ? (
-        <p>No requests found.</p>
-      ) : (
-        <table className="table table-bordered mt-3">
-          <thead className="table-dark">
-            <tr>
-              <th>Item</th>
-              <th>Quantity</th>
-              <th>Reason</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {requests.map((req, index) => (
-              <tr key={index}>
-                <td>{req.item}</td>
-                <td>{req.quantity}</td>
-                <td>{req.reason}</td>
-                <td>
-                  <button
-                    className="btn btn-warning btn-sm me-2"
-                    onClick={() => handleEdit(index)}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleDelete(index)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </div>
   );
 }
 
 export default RequestItems;
-

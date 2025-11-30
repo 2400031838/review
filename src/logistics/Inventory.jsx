@@ -1,4 +1,14 @@
+// src/logistics/Inventory.jsx
 import React, { useState, useEffect } from "react";
+import { db } from "../firebase";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  doc,
+  onSnapshot,
+} from "firebase/firestore";
 
 function Inventory() {
   const [form, setForm] = useState({
@@ -7,50 +17,60 @@ function Inventory() {
     category: "",
   });
 
-  const [items, setItems] = useState([]);
-  const [editIndex, setEditIndex] = useState(null);
+  const [inventory, setInventory] = useState([]);
+  const [editId, setEditId] = useState(null);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("inventory")) || [];
-    setItems(stored);
+    const unsub = onSnapshot(collection(db, "inventory"), (snap) => {
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      setInventory(list);
+    });
+
+    return () => unsub();
   }, []);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.item || !form.quantity || !form.category) {
-      alert("All fields are required!");
+      alert("All fields required!");
       return;
     }
 
-    let updated = [...items];
-
-    if (editIndex !== null) {
-      updated[editIndex] = form;
-      setEditIndex(null);
-    } else {
-      updated.push(form);
+    try {
+      if (editId) {
+        await updateDoc(doc(db, "inventory", editId), form);
+        alert("Item updated!");
+        setEditId(null);
+      } else {
+        await addDoc(collection(db, "inventory"), form);
+        alert("Item added!");
+      }
+    } catch (error) {
+      alert("Error saving!");
     }
-
-    setItems(updated);
-    localStorage.setItem("inventory", JSON.stringify(updated));
 
     setForm({ item: "", quantity: "", category: "" });
   };
 
-  const handleEdit = (index) => {
-    setForm(items[index]);
-    setEditIndex(index);
+  const handleEdit = (i) => {
+    setForm(i);
+    setEditId(i.id);
   };
 
-  const handleDelete = (index) => {
-    const updated = items.filter((_, i) => i !== index);
-    setItems(updated);
-    localStorage.setItem("inventory", JSON.stringify(updated));
+  const handleDelete = async (id) => {
+    await deleteDoc(doc(db, "inventory", id));
+    alert("Item deleted!");
   };
 
   return (
@@ -93,44 +113,38 @@ function Inventory() {
           </div>
 
           <button className="btn btn-primary w-100">
-            {editIndex !== null ? "Update Item" : "Add Item"}
+            {editId ? "Update Item" : "Add Item"}
           </button>
         </form>
       </div>
 
       <h3 className="mt-4">Inventory List</h3>
 
-      {items.length === 0 ? (
-        <p>No inventory items added.</p>
+      {inventory.length === 0 ? (
+        <p>No items.</p>
       ) : (
         <table className="table table-striped mt-3">
           <thead>
             <tr>
               <th>Item</th>
-              <th>Quantity</th>
+              <th>Qty</th>
               <th>Category</th>
               <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {items.map((i, index) => (
-              <tr key={index}>
+            {inventory.map((i) => (
+              <tr key={i.id}>
                 <td>{i.item}</td>
                 <td>{i.quantity}</td>
                 <td>{i.category}</td>
                 <td>
-                  <button
-                    className="btn btn-warning btn-sm me-2"
-                    onClick={() => handleEdit(index)}
-                  >
+                  <button className="btn btn-warning btn-sm me-2" onClick={() => handleEdit(i)}>
                     Edit
                   </button>
 
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleDelete(index)}
-                  >
+                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(i.id)}>
                     Delete
                   </button>
                 </td>
@@ -144,4 +158,3 @@ function Inventory() {
 }
 
 export default Inventory;
-

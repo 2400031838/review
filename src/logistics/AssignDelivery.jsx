@@ -1,45 +1,45 @@
+// src/logistics/AssignDelivery.jsx
 import React, { useEffect, useState } from "react";
+import { db } from "../firebase";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+} from "firebase/firestore";
 
 function AssignDelivery() {
-  const [assignments, setAssignments] = useState([]);
-  const [selection, setSelection] = useState({
-    donorItem: "",
-    recipientRequest: "",
-    deliveryPerson: "",
+  const [deliveries, setDeliveries] = useState([]);
+  const [form, setForm] = useState({
+    donationId: "",
+    vehicle: "",
+    driver: "",
   });
 
-  const donations = JSON.parse(localStorage.getItem("donations")) || [];
-  const requests = JSON.parse(localStorage.getItem("requests")) || [];
-
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("assignments")) || [];
-    setAssignments(stored);
+    const unsub = onSnapshot(collection(db, "deliveries"), (snap) => {
+      setDeliveries(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => unsub();
   }, []);
 
   const handleChange = (e) => {
-    setSelection({ ...selection, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleAssign = (e) => {
+  const handleAssign = async (e) => {
     e.preventDefault();
 
-    if (
-      !selection.donorItem ||
-      !selection.recipientRequest ||
-      !selection.deliveryPerson
-    ) {
-      alert("All fields are required!");
-      return;
-    }
+    await addDoc(collection(db, "deliveries"), form);
+    alert("Delivery Assigned!");
 
-    const updated = [...assignments, selection];
-    setAssignments(updated);
-    localStorage.setItem("assignments", JSON.stringify(updated));
-
-    setSelection({
-      donorItem: "",
-      recipientRequest: "",
-      deliveryPerson: "",
+    setForm({
+      donationId: "",
+      vehicle: "",
+      driver: "",
     });
   };
 
@@ -49,78 +49,53 @@ function AssignDelivery() {
 
       <div className="card p-3 mt-3 shadow">
         <form onSubmit={handleAssign}>
-          <div className="mb-3">
-            <label>Select Donor Item</label>
-            <select
-              className="form-select"
-              name="donorItem"
-              value={selection.donorItem}
-              onChange={handleChange}
-            >
-              <option value="">Select Item</option>
-              {donations.map((d, i) => (
-                <option key={i} value={d.item}>
-                  {d.item} ({d.quantity})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label>Select Recipient Request</label>
-            <select
-              className="form-select"
-              name="recipientRequest"
-              value={selection.recipientRequest}
-              onChange={handleChange}
-            >
-              <option value="">Select Request</option>
-              {requests.map((r, i) => (
-                <option key={i} value={r.item}>
-                  {r.item} ({r.quantity})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label>Delivery Person</label>
+          <div className="mb-2">
+            <label>Donation ID</label>
             <input
-              type="text"
+              name="donationId"
               className="form-control"
-              name="deliveryPerson"
-              value={selection.deliveryPerson}
+              value={form.donationId}
               onChange={handleChange}
             />
           </div>
 
-          <button className="btn btn-success w-100">
-            Assign Delivery
-          </button>
+          <div className="mb-2">
+            <label>Vehicle</label>
+            <input
+              name="vehicle"
+              className="form-control"
+              value={form.vehicle}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="mb-2">
+            <label>Driver Name</label>
+            <input
+              name="driver"
+              className="form-control"
+              value={form.driver}
+              onChange={handleChange}
+            />
+          </div>
+
+          <button className="btn btn-primary w-100">Assign</button>
         </form>
       </div>
 
-      <h3 className="mt-4">All Assignments</h3>
+      <h3 className="mt-4">Assigned Deliveries</h3>
 
-      <table className="table table-bordered mt-3">
-        <thead className="table-dark">
-          <tr>
-            <th>Donor Item</th>
-            <th>Recipient Request</th>
-            <th>Delivery Person</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {assignments.map((a, i) => (
-            <tr key={i}>
-              <td>{a.donorItem}</td>
-              <td>{a.recipientRequest}</td>
-              <td>{a.deliveryPerson}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ul className="list-group">
+        {deliveries.map((d) => (
+          <li key={d.id} className="list-group-item">
+            <b>Donation ID:</b> {d.donationId}
+            <br />
+            <b>Vehicle:</b> {d.vehicle}
+            <br />
+            <b>Driver:</b> {d.driver}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

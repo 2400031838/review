@@ -1,47 +1,40 @@
+// src/recipient/TrackRequests.jsx
 import React, { useEffect, useState } from "react";
+import { db } from "../firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 
 function TrackRequests() {
   const [requests, setRequests] = useState([]);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("requests")) || [];
-    setRequests(stored);
+    const unsub = onSnapshot(collection(db, "requests"), (snap) => {
+      setRequests(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      );
+    });
+
+    return () => unsub();
   }, []);
 
   return (
     <div className="container mt-4">
-      <h2>Track Your Requests</h2>
+      <h2>Your Requests</h2>
 
       {requests.length === 0 ? (
-        <p>No requests submitted.</p>
+        <p>No requests made.</p>
       ) : (
-        <table className="table table-striped mt-4">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Quantity</th>
-              <th>Reason</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {requests.map((req, i) => (
-              <tr key={i}>
-                <td>{req.item}</td>
-                <td>{req.quantity}</td>
-                <td>{req.reason}</td>
-                <td>
-                  <span className="badge bg-info">Pending</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="list-group mt-3">
+          {requests.map((r) => (
+            <li key={r.id} className="list-group-item">
+              <b>{r.item}</b> — {r.quantity}
+              <br />
+              <small>Status: {r.status}</small>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
 export default TrackRequests;
-

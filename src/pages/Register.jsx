@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+// ⭐ Firestore imports
+import { db } from "../firebase";
+import { collection, addDoc } from "firebase/firestore";
+
 function Register() {
   const [form, setForm] = useState({
     name: "",
@@ -11,11 +15,17 @@ function Register() {
 
   const navigate = useNavigate();
 
+  const isStrongPassword = (password) => {
+    const strongRegex =
+      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@#$!%*?&]).{8,}$/;
+    return strongRegex.test(password);
+  };
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
 
     if (!form.name || !form.email || !form.password || !form.role) {
@@ -23,13 +33,26 @@ function Register() {
       return;
     }
 
-    // Save user in localStorage
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    users.push(form);
-    localStorage.setItem("users", JSON.stringify(users));
+    if (!isStrongPassword(form.password)) {
+      alert(
+        "Password must be 8+ characters, include uppercase, lowercase, number, and special symbol."
+      );
+      return;
+    }
 
-    alert("Registration Successful!");
-    navigate("/login");
+    try {
+      // ⭐ Save user in Firestore
+      await addDoc(collection(db, "users"), {
+        ...form,
+        createdAt: new Date(),
+      });
+
+      alert("Registration Successful!");
+      navigate("/login");
+    } catch (err) {
+      console.error("Firestore Error:", err);
+      alert("Something went wrong while saving to Firestore");
+    }
   };
 
   return (
@@ -37,6 +60,8 @@ function Register() {
       <h2 className="text-center">Create Account</h2>
 
       <div className="card p-4 shadow mt-4">
+  
+
         <form onSubmit={handleRegister}>
           <div className="mb-3">
             <label>Name</label>
@@ -69,6 +94,9 @@ function Register() {
               value={form.password}
               onChange={handleChange}
             />
+            <small className="text-muted">
+              Must include A-Z, a-z, 0-9, special symbol (@,#,$,!,%).
+            </small>
           </div>
 
           <div className="mb-3">
@@ -90,8 +118,7 @@ function Register() {
           <button className="btn btn-primary w-100">Register</button>
 
           <p className="mt-3 text-center">
-            Already have an account?{" "}
-            <Link to="/login">Login here</Link>
+            Already have an account? <Link to="/login">Login here</Link>
           </p>
         </form>
       </div>
@@ -100,4 +127,3 @@ function Register() {
 }
 
 export default Register;
-

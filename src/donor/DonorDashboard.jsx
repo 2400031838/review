@@ -4,7 +4,10 @@ import { Link } from "react-router-dom";
 function DonorDashboard() {
   return (
     <div className="container mt-5">
-      <div className="card shadow-lg p-4" style={{ background: "#222", color: "white" }}>
+      <div
+        className="card shadow-lg p-4"
+        style={{ background: "#222", color: "white" }}
+      >
         <h2 className="text-center mb-3">Donor Dashboard</h2>
 
         <h5 className="text-center mb-4">Welcome, Donor!</h5>

@@ -10,10 +10,11 @@ function AdminDashboard() {
       >
         <h2 className="text-center mb-3">Admin Dashboard</h2>
 
-        <h4 className="mb-3">Welcome, Admin!</h4>
-        <p>Select a management option:</p>
+        <h4 className="text-center mb-3">Welcome, Admin!</h4>
+        <p className="text-center">Choose a management option:</p>
 
         <div className="d-flex flex-column gap-3 mt-3">
+
           <Link to="/admin/donors" className="btn btn-primary btn-lg">
             View Donors
           </Link>
@@ -22,11 +23,11 @@ function AdminDashboard() {
             View Recipients
           </Link>
 
-          <Link to="/admin/manage-drives" className="btn btn-success btn-lg">
+          <Link to="/admin/manage" className="btn btn-success btn-lg">
             Manage Donation Drives
           </Link>
 
-          <Link to="/admin/reports" className="btn btn-dark btn-lg">
+          <Link to="/admin/reports" className="btn btn-warning btn-lg text-dark">
             View Reports
           </Link>
         </div>
